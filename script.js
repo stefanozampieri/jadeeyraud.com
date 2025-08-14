@@ -7,6 +7,11 @@
   const birthDate = new Date(BIRTH_YEAR, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0, 0);
 
   const el = {
+    gate: document.getElementById('gate-overlay'),
+    gateDays: document.getElementById('gate-days'),
+    gateHours: document.getElementById('gate-hours'),
+    gateMinutes: document.getElementById('gate-minutes'),
+    gateSeconds: document.getElementById('gate-seconds'),
     years: document.getElementById('age-years'),
     months: document.getElementById('age-months'),
     days: document.getElementById('age-days'),
@@ -117,7 +122,81 @@
     if (el.lifeEta) el.lifeEta.textContent = `${yearsLeft.toFixed(6)} years left to 100`;
   }
 
+  // Compute next birthday unlock at midnight America/Los_Angeles (DST-aware)
+  function getNextUnlockInPT(now = new Date()) {
+    const tz = 'America/Los_Angeles';
+
+    function zonedTimeToUtc(year, monthIdx, day, hour = 0, minute = 0, second = 0) {
+      const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+      const localTs = Date.UTC(year, monthIdx, day, hour, minute, second);
+      const parts = dtf.formatToParts(new Date(localTs));
+      const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+      const shownUTC = Date.UTC(
+        parseInt(map.year, 10),
+        parseInt(map.month, 10) - 1,
+        parseInt(map.day, 10),
+        parseInt(map.hour, 10),
+        parseInt(map.minute, 10),
+        parseInt(map.second, 10)
+      );
+      const offset = shownUTC - localTs;
+      return new Date(localTs - offset);
+    }
+
+    // Current year in PT
+    const nowParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, year: 'numeric'
+    }).formatToParts(now);
+    const nowMap = Object.fromEntries(nowParts.map(p => [p.type, p.value]));
+    const ptYear = parseInt(nowMap.year, 10);
+
+    let unlock = zonedTimeToUtc(ptYear, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+    if (now.getTime() >= unlock.getTime()) {
+      unlock = zonedTimeToUtc(ptYear + 1, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+    }
+
+    return { unlock, diffMs: unlock.getTime() - now.getTime() };
+  }
+
+  function updateGate() {
+    const gate = document.getElementById('gate-overlay');
+    if (!gate) return true;
+
+    const { diffMs } = getNextUnlockInPT(new Date());
+    if (diffMs <= 0 || !isFinite(diffMs)) {
+      gate.classList.add('hidden');
+      return true; // allow main UI updates
+    }
+
+    // Show overlay and update its countdown
+    gate.classList.remove('hidden');
+    const total = Math.max(0, Math.ceil(diffMs / 1000));
+    const days = Math.floor(total / (24 * 3600));
+    const hours = Math.floor((total % (24 * 3600)) / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+
+    const gd = document.getElementById('gate-days');
+    const gh = document.getElementById('gate-hours');
+    const gm = document.getElementById('gate-minutes');
+    const gs = document.getElementById('gate-seconds');
+    if (gd) gd.textContent = String(days);
+    if (gh) gh.textContent = String(hours).padStart(2, '0');
+    if (gm) gm.textContent = String(minutes).padStart(2, '0');
+    if (gs) gs.textContent = String(seconds).padStart(2, '0');
+
+    return false; // block main UI updates while gate is active
+  }
+
   function tick() {
+    if (!updateGate()) {
+      // Gate is still up; only update gate timer
+      return;
+    }
     updateAge();
     updateCountdown();
     updateZodiac();
@@ -129,6 +208,76 @@
   // Update twice a second for snappier seconds roll-over
   setInterval(tick, 500);
 })();
+
+// Compute next birthday unlock at midnight America/Los_Angeles (DST-aware)
+function getNextUnlockInPT(now = new Date()) {
+  const tz = 'America/Los_Angeles';
+
+  function zonedTimeToUtc(year, monthIdx, day, hour = 0, minute = 0, second = 0) {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+    const localTs = Date.UTC(year, monthIdx, day, hour, minute, second);
+    const parts = dtf.formatToParts(new Date(localTs));
+    const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    const shownUTC = Date.UTC(
+      parseInt(map.year, 10),
+      parseInt(map.month, 10) - 1,
+      parseInt(map.day, 10),
+      parseInt(map.hour, 10),
+      parseInt(map.minute, 10),
+      parseInt(map.second, 10)
+    );
+    const offset = shownUTC - localTs;
+    return new Date(localTs - offset);
+  }
+
+  // Current year in PT
+  const nowParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric'
+  }).formatToParts(now);
+  const nowMap = Object.fromEntries(nowParts.map(p => [p.type, p.value]));
+  const ptYear = parseInt(nowMap.year, 10);
+
+  let unlock = zonedTimeToUtc(ptYear, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+  if (now.getTime() >= unlock.getTime()) {
+    unlock = zonedTimeToUtc(ptYear + 1, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+  }
+
+  return { unlock, diffMs: unlock.getTime() - now.getTime() };
+}
+
+function updateGate() {
+  const gate = document.getElementById('gate-overlay');
+  if (!gate) return true;
+
+  const { diffMs } = getNextUnlockInPT(new Date());
+  if (diffMs <= 0 || !isFinite(diffMs)) {
+    gate.classList.add('hidden');
+    return true; // allow main UI updates
+  }
+
+  // Show overlay and update its countdown
+  gate.classList.remove('hidden');
+  const total = Math.max(0, Math.ceil(diffMs / 1000));
+  const days = Math.floor(total / (24 * 3600));
+  const hours = Math.floor((total % (24 * 3600)) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+
+  const gd = document.getElementById('gate-days');
+  const gh = document.getElementById('gate-hours');
+  const gm = document.getElementById('gate-minutes');
+  const gs = document.getElementById('gate-seconds');
+  if (gd) gd.textContent = String(days);
+  if (gh) gh.textContent = String(hours).padStart(2, '0');
+  if (gm) gm.textContent = String(minutes).padStart(2, '0');
+  if (gs) gs.textContent = String(seconds).padStart(2, '0');
+
+  return false; // block main UI updates while gate is active
+}
 
 function updateZodiac() {
   const western = getWesternZodiac(new Date(1989, 7, 15));

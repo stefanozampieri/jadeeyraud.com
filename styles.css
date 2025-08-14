@@ -338,3 +338,26 @@ body {
 }
 
 
+
+/* Gate overlay */
+.gate {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(160deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.94) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+}
+
+.gate.hidden { display: none; }
+
+.gate-card {
+  width: min(760px, 94vw);
+}
+
+.gate-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
