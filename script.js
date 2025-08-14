@@ -122,43 +122,31 @@
     if (el.lifeEta) el.lifeEta.textContent = `${yearsLeft.toFixed(6)} years left to 100`;
   }
 
-  // Compute next birthday unlock at midnight America/Los_Angeles (DST-aware)
+  // Compute next birthday unlock at midnight America/Los_Angeles
   function getNextUnlockInPT(now = new Date()) {
     const tz = 'America/Los_Angeles';
 
-    function zonedTimeToUtc(year, monthIdx, day, hour = 0, minute = 0, second = 0) {
-      const dtf = new Intl.DateTimeFormat('en-US', {
-        timeZone: tz,
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-      });
-      const localTs = Date.UTC(year, monthIdx, day, hour, minute, second);
-      const parts = dtf.formatToParts(new Date(localTs));
-      const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-      const shownUTC = Date.UTC(
-        parseInt(map.year, 10),
-        parseInt(map.month, 10) - 1,
-        parseInt(map.day, 10),
-        parseInt(map.hour, 10),
-        parseInt(map.minute, 10),
-        parseInt(map.second, 10)
-      );
-      const offset = shownUTC - localTs;
-      return new Date(localTs - offset);
+    function toPTMidnightUtc(year, monthIdx, day) {
+      const midnightPT = new Date(Date.UTC(year, monthIdx, day, 7, 0, 0));
+      const jan = new Date(Date.UTC(year, 0, 1));
+      const jul = new Date(Date.UTC(year, 6, 1));
+      const std = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+      const ptOffsetMinutes = std === 480 ? (isDST(midnightPT, tz) ? 420 : 480) : 480;
+      return new Date(Date.UTC(year, monthIdx, day, ptOffsetMinutes / 60, 0, 0));
     }
 
-    // Current year in PT
-    const nowParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, year: 'numeric'
-    }).formatToParts(now);
-    const nowMap = Object.fromEntries(nowParts.map(p => [p.type, p.value]));
-    const ptYear = parseInt(nowMap.year, 10);
+    function isDST(d, timeZone) {
+      const s = new Date(d.toLocaleString('en-US', { timeZone }));
+      const jan = new Date(new Date(d.getFullYear(), 0, 1).toLocaleString('en-US', { timeZone }));
+      const jul = new Date(new Date(d.getFullYear(), 6, 1).toLocaleString('en-US', { timeZone }));
+      return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset()) !== s.getTimezoneOffset();
+    }
 
-    let unlock = zonedTimeToUtc(ptYear, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+    const ptYear = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' }).format(now), 10);
+    let unlock = toPTMidnightUtc(ptYear, BIRTH_MONTH_IDX, BIRTH_DAY);
     if (now.getTime() >= unlock.getTime()) {
-      unlock = zonedTimeToUtc(ptYear + 1, BIRTH_MONTH_IDX, BIRTH_DAY, 0, 0, 0);
+      unlock = toPTMidnightUtc(ptYear + 1, BIRTH_MONTH_IDX, BIRTH_DAY);
     }
-
     return { unlock, diffMs: unlock.getTime() - now.getTime() };
   }
 
