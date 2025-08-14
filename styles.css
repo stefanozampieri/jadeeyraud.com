@@ -339,31 +339,4 @@ body {
 
 
 
-/* Gate overlay */
-.gate {
-  position: fixed !important;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: linear-gradient(160deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.94) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 9999;
-  pointer-events: auto;
-}
-
-.gate.hidden { display: none !important; }
-
-.gate-card {
-  width: min(760px, 94vw);
-}
-
-.gate-row {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
+/* Gate overlay removed */
