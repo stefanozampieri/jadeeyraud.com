@@ -126,27 +126,26 @@
   function getNextUnlockInPT(now = new Date()) {
     const tz = 'America/Los_Angeles';
 
-    function toPTMidnightUtc(year, monthIdx, day) {
-      const midnightPT = new Date(Date.UTC(year, monthIdx, day, 7, 0, 0));
-      const jan = new Date(Date.UTC(year, 0, 1));
-      const jul = new Date(Date.UTC(year, 6, 1));
-      const std = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
-      const ptOffsetMinutes = std === 480 ? (isDST(midnightPT, tz) ? 420 : 480) : 480;
-      return new Date(Date.UTC(year, monthIdx, day, ptOffsetMinutes / 60, 0, 0));
+    // Get the PT-local components for "now"
+    const nowPT = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+    const yearPT = nowPT.getFullYear();
+
+    function ptMidnight(year) {
+      // Build a PT-local midnight on month/day, then convert back to real Date via locale trick
+      const targetPT = new Date(Date.UTC(year, BIRTH_MONTH_IDX, BIRTH_DAY, 8, 0, 0));
+      // 08:00 UTC approximates 00:00 PT during DST; we correct by reading back PT-local and zeroing time
+      const ptLocal = new Date(targetPT.toLocaleString('en-US', { timeZone: tz }));
+      ptLocal.setHours(0, 0, 0, 0); // 00:00 PT
+      // Convert PT-local back to an actual Date in our environment by formatting in PT again
+      return new Date(ptLocal.toLocaleString('en-US', { timeZone: tz }));
     }
 
-    function isDST(d, timeZone) {
-      const s = new Date(d.toLocaleString('en-US', { timeZone }));
-      const jan = new Date(new Date(d.getFullYear(), 0, 1).toLocaleString('en-US', { timeZone }));
-      const jul = new Date(new Date(d.getFullYear(), 6, 1).toLocaleString('en-US', { timeZone }));
-      return Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset()) !== s.getTimezoneOffset();
+    let unlock = ptMidnight(yearPT);
+    if (nowPT.getTime() >= unlock.getTime()) {
+      unlock = ptMidnight(yearPT + 1);
     }
 
-    const ptYear = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' }).format(now), 10);
-    let unlock = toPTMidnightUtc(ptYear, BIRTH_MONTH_IDX, BIRTH_DAY);
-    if (now.getTime() >= unlock.getTime()) {
-      unlock = toPTMidnightUtc(ptYear + 1, BIRTH_MONTH_IDX, BIRTH_DAY);
-    }
+    // diff must be computed in real time, not PT-local
     return { unlock, diffMs: unlock.getTime() - now.getTime() };
   }
 

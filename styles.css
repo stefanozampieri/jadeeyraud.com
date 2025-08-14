@@ -341,7 +341,7 @@ body {
 
 /* Gate overlay */
 .gate {
-  position: fixed;
+  position: fixed !important;
   top: 0;
   right: 0;
   bottom: 0;
@@ -354,10 +354,11 @@ body {
   background: linear-gradient(160deg, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.94) 100%);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 9999;
+  pointer-events: auto;
 }
 
-.gate.hidden { display: none; }
+.gate.hidden { display: none !important; }
 
 .gate-card {
   width: min(760px, 94vw);
